@@ -2,6 +2,7 @@
 
 (use 'clojure.math.numeric-tower)
 (use 'euler.primes)
+(use 'euler.common)
 
 (defn- triangle-number [i]
   {:doc "return i-th triangle number"}
@@ -37,15 +38,6 @@
            number
            (inc prime-index)
            factors))))))
-
-(defn- with-cache [cache key fn]
-  (let [cached-result (.get cache key)]
-    (if (nil? cached-result)
-      (let [computed-result (fn)]
-        (do
-          (.put cache key computed-result)
-          computed-result))
-      cached-result)))
 
 (defn- divisors-count
   ([number primes cache]
