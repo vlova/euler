@@ -2,43 +2,48 @@
 
 (use 'clojure.math.numeric-tower)
 
-(defn- triangle-numbers
-  ([]
-   (triangle-numbers 1 0))
+(defn- triangle-number [i]
+  {:doc "return i-th triangle number"}
 
-  ([index previous]
-   (let [current (+ previous index)]
-     (cons {:number current :index index}
-           (lazy-seq (triangle-numbers (inc index) current))))))
+  {:number (/ (* i (inc i)) 2)
+   :index i})
 
 (defn- divides? [number div]
   (= (mod number div) 0))
 
+(defn- prime-divisors-count [number primes]
+  {:doc "count number of prime divisors of given number" }
+
+  (let [limit (inc (bigint (sqrt number)))]
+    (count
+     (->> primes
+          (filter #(< % limit))
+          (map #(divides? number %))
+          (filter true?)))))
+
 (defn- isPrime? [number primes]
-  (let [limit (inc (bigint (sqrt number)))
-        divisors-count (count (->> primes
-                                   (filter #(< % limit))
-                                   (map #(divides? number %))
-                                   (filter true?)))]
-    (zero? divisors-count)
-    ))
+  {:doc "checks if given number is prime using precalculated array of primes"}
+
+  (zero? (prime-divisors-count number primes)))
 
 (defn- primes
-  ([count]
+  {:doc "generates array of prime numbers" }
+
+  ([up-to]
    (loop [previous 3
-          generated [2 3]
-          iteration 2]
-     (if (>= iteration count)
+          generated [2 3]]
+     (if (>= previous up-to)
        generated
-       (let [current (+ previous 2)
-             isPrime? (isPrime? current generated)]
-         (if isPrime?
-           (recur current (conj generated current) (inc iteration))
-           (recur current generated (inc iteration)))))
+       (let [current (+ previous 2)]
+         (if (isPrime? current generated)
+           (recur current (conj generated current))
+           (recur current generated))))
      )
    ))
 
-(defn- divides-count [number divisor]
+(defn- divide-times [number divisor]
+  {:doc "determine how many times number can be divided using given divisor"}
+
   (loop [number number
          count 0]
     (if (divides? number divisor)
@@ -55,11 +60,11 @@
       (persistent! factors)
       (let [current-prime (nth primes prime-index)]
         (if (divides? number current-prime)
-          (let [count (divides-count number current-prime)]
+          (let [divide-times (divide-times number current-prime)]
             (recur
-             (/ number (expt current-prime count))
+             (/ number (expt current-prime divide-times))
              (inc prime-index)
-             (conj! factors { :prime current-prime :count count })))
+             (conj! factors { :prime current-prime :times divide-times })))
           (recur
            number
            (inc prime-index)
@@ -76,30 +81,33 @@
 
 (defn- divisors-count
   ([number primes cache]
-   (with-cache cache number
-     (fn []
-       (let [factors (factorize number primes)]
-         (reduce * (map #(inc (:count %)) factors)))))))
+   (let [factors (factorize number primes)]
+         (reduce * (map #(inc (:times %)) factors)))))
 
 (defn- triangle-number-divisors-count [index primes divisors-cache]
-  (if (even? index)
-    (* (divisors-count (/ index 2) primes divisors-cache)
-       (divisors-count (inc index) primes divisors-cache))
+  (let [a (if (even? index) (/ index 2) index)
+        b (if (even? index) (inc index) (/ (inc index) 2))]
+    (* (divisors-count a primes divisors-cache)
+       (divisors-count b primes divisors-cache))))
 
-    (* (divisors-count (/ (inc index) 2) primes divisors-cache)
-       (divisors-count index primes divisors-cache))))
+(defn- optimal-primes-count [divisors-count]
+  {:doc "determines optimal primes count for finding triangle number with specified divisors count"}
 
-(defn task [n]
-  (let [n n
-        divisors-cache (java.util.HashMap.)
-        primes (primes (double n))]
-    (first
-     (->>
-      (triangle-numbers)
-      (map #(identity {:number (:number %)
-                       :count (triangle-number-divisors-count (:index %) primes divisors-cache)
-                       :index (:index %)}))
-      (filter #(> (:count %) n))
-      ))))
+  (-> divisors-count
+      (exact-integer-sqrt)
+      (first)
+      (inc)))
+
+(defn task [divisors-count]
+  (let [divisors-cache (java.util.HashMap.)
+        primes (primes (optimal-primes-count divisors-count))]
+    (loop [i 1]
+      (let [number (triangle-number i)
+            number (merge number {:count
+                                  (triangle-number-divisors-count (:index number) primes divisors-cache)})]
+        (if (> (:count number) divisors-count)
+          number
+          (recur (inc i)))
+        ))))
 
 (time (task 500))
