@@ -55,21 +55,15 @@
       (persistent! factors)
       (let [current-prime (nth primes prime-index)]
         (if (divides? number current-prime)
-          (recur
-           (/ number current-prime)
-           prime-index
-           (conj! factors current-prime))
+          (let [count (divides-count number current-prime)]
+            (recur
+             (/ number (expt current-prime count))
+             (inc prime-index)
+             (conj! factors { :prime current-prime :count count })))
           (recur
            number
            (inc prime-index)
            factors))))))
-
-(defn- subsets [set]
-  (if (empty? set) []
-    (concat (subsets (drop 1 set))
-            (map #(conj % (first set)) (subsets (drop 1 set)))
-            [[(first set)]])))
-
 
 (defn- with-cache [cache key fn]
   (let [cached-result (.get cache key)]
@@ -83,12 +77,9 @@
 (defn- divisors-count
   ([number primes cache]
    (with-cache cache number
-     #(-> number
-          (factorize primes)
-          (subsets)
-          (distinct)
-          (count)
-          (+ 1)))))
+     (fn []
+       (let [factors (factorize number primes)]
+         (reduce * (map #(inc (:count %)) factors)))))))
 
 (defn- triangle-number-divisors-count [index primes divisors-cache]
   (if (even? index)
@@ -96,8 +87,7 @@
        (divisors-count (inc index) primes divisors-cache))
 
     (* (divisors-count (/ (inc index) 2) primes divisors-cache)
-       (divisors-count index primes divisors-cache))
-    ))
+       (divisors-count index primes divisors-cache))))
 
 (defn task [n]
   (let [n n
