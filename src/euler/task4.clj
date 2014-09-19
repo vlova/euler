@@ -2,12 +2,6 @@
 
 (use 'clojure.math.numeric-tower)
 
-(defn- isPalindrome? [number]
-  {:doc "checks whether the number is palindrome" }
-
-  (let [digits (seq (.toString number))]
-    (= digits (reverse digits))))
-
 (defn- divides? [number div]
   (= (mod number div)))
 

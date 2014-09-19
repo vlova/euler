@@ -26,3 +26,13 @@
 
 (defn sum [coll]
   (reduce + 0 coll))
+
+(defn isPalindrome?
+  {:doc "checks whether the number is palindrome" }
+
+  ([number]
+   (isPalindrome? number 10))
+
+  ([number radix]
+    (let [digits (seq (Integer/toString number radix))]
+      (= digits (reverse digits)))))
