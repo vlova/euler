@@ -55,29 +55,20 @@
       (persistent! factors)
       (let [current-prime (nth primes prime-index)]
         (if (divides? number current-prime)
-          (recur
-             (/ number current-prime)
-             prime-index
-             (conj! factors current-prime))
+          (let [count (divides-count number current-prime)]
+            (recur
+             (/ number (expt current-prime count))
+             (inc prime-index)
+             (conj! factors { :prime current-prime :count count })))
           (recur
            number
            (inc prime-index)
            factors))))))
 
-(defn- subsets [set]
-  (if (empty? set) []
-    (concat (subsets (drop 1 set))
-          (map #(conj % (first set)) (subsets (drop 1 set)))
-          [[(first set)]])))
-
 (defn- divisors-count
   ([number primes]
-   (-> number
-       (factorize primes)
-       (subsets)
-       (distinct)
-       (count)
-       (+ 1)
+   (let [factors (factorize number primes)]
+     (reduce * (map #(inc (:count %)) factors))
    )))
 
 (defn task [n]
@@ -88,7 +79,7 @@
       (triangle-numbers)
       (map #(identity {:number %
                        :count (divisors-count % primes)}))
-      (filter #(> (:count %) n))
+      (filter #(>= (:count %) n))
       ))))
 
 (time (task 500))
