@@ -8,7 +8,7 @@
 
   ([index previous]
    (let [current (+ previous index)]
-     (cons current
+     (cons {:number current :index index}
            (lazy-seq (triangle-numbers (inc index) current))))))
 
 (defn- divides? [number div]
@@ -17,9 +17,9 @@
 (defn- isPrime? [number primes]
   (let [limit (inc (bigint (sqrt number)))
         divisors-count (count (->> primes
-                            (filter #(< % limit))
-                            (map #(divides? number %))
-                            (filter true?)))]
+                                   (filter #(< % limit))
+                                   (map #(divides? number %))
+                                   (filter true?)))]
     (zero? divisors-count)
     ))
 
@@ -31,10 +31,10 @@
      (if (>= iteration count)
        generated
        (let [current (+ previous 2)
-           isPrime? (isPrime? current generated)]
-       (if isPrime?
-         (recur current (conj generated current) (inc iteration))
-         (recur current generated (inc iteration)))))
+             isPrime? (isPrime? current generated)]
+         (if isPrime?
+           (recur current (conj generated current) (inc iteration))
+           (recur current generated (inc iteration)))))
      )
    ))
 
@@ -55,31 +55,61 @@
       (persistent! factors)
       (let [current-prime (nth primes prime-index)]
         (if (divides? number current-prime)
-          (let [count (divides-count number current-prime)]
-            (recur
-             (/ number (expt current-prime count))
-             (inc prime-index)
-             (conj! factors { :prime current-prime :count count })))
+          (recur
+           (/ number current-prime)
+           prime-index
+           (conj! factors current-prime))
           (recur
            number
            (inc prime-index)
            factors))))))
 
+(defn- subsets [set]
+  (if (empty? set) []
+    (concat (subsets (drop 1 set))
+            (map #(conj % (first set)) (subsets (drop 1 set)))
+            [[(first set)]])))
+
+
+(defn- with-cache [cache key fn]
+  (let [cached-result (.get cache key)]
+    (if (nil? cached-result)
+      (let [computed-result (fn)]
+        (do
+          (.put cache key computed-result)
+          computed-result))
+      cached-result)))
+
 (defn- divisors-count
-  ([number primes]
-   (let [factors (factorize number primes)]
-     (reduce * (map #(inc (:count %)) factors))
-   )))
+  ([number primes cache]
+   (with-cache cache number
+     #(-> number
+          (factorize primes)
+          (subsets)
+          (distinct)
+          (count)
+          (+ 1)))))
+
+(defn- triangle-number-divisors-count [index primes divisors-cache]
+  (if (even? index)
+    (* (divisors-count (/ index 2) primes divisors-cache)
+       (divisors-count (inc index) primes divisors-cache))
+
+    (* (divisors-count (/ (inc index) 2) primes divisors-cache)
+       (divisors-count index primes divisors-cache))
+    ))
 
 (defn task [n]
   (let [n n
+        divisors-cache (java.util.HashMap.)
         primes (primes (double n))]
-  (first
+    (first
      (->>
       (triangle-numbers)
-      (map #(identity {:number %
-                       :count (divisors-count % primes)}))
-      (filter #(>= (:count %) n))
+      (map #(identity {:number (:number %)
+                       :count (triangle-number-divisors-count (:index %) primes divisors-cache)
+                       :index (:index %)}))
+      (filter #(> (:count %) n))
       ))))
 
 (time (task 500))
