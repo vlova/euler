@@ -14,9 +14,9 @@
       (let [computed-result (fn)]
         (do
           (.put cache key computed-result)
-          computed-result))
+          computed-result)
+        )
       cached-result)))
-
 
 (def factorial-cache (java.util.HashMap.))
 
@@ -31,7 +31,8 @@
   {:doc "checks whether the number is palindrome" }
 
   ([number]
-   (isPalindrome? number 10))
+   (let [digits (seq (str number))]
+      (= digits (reverse digits))))
 
   ([number radix]
     (let [digits (seq (Integer/toString number radix))]
